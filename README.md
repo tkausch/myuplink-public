@@ -169,6 +169,92 @@ Method names come from the HTTP method and path. Look them up in
 `Sources/MyUplink/Generated/Client.swift`, or search for the path, for example
 `/v2/devices/{deviceId}/firmware-info` → `getV2DevicesDeviceIdFirmwareInfo`.
 
+## Available services
+
+All operations of the published spec, grouped by its tags. `{…}` marks a path
+parameter. `GET /v2/ping` needs no token.
+
+### Systems
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/systems/me` | `getV2SystemsMe` | Get user systems. |
+| PUT | `/v2/systems/{systemId}/smart-home-mode` | `putV2SystemsSystemIdSmartHomeMode` | Set smart home mode for a system. |
+| GET | `/v2/systems/{systemId}/smart-home-mode` | `getV2SystemsSystemIdSmartHomeMode` | Get current smart home mode of a system. |
+
+### Devices
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/devices/{deviceId}` | `getV2DevicesDeviceId` | Device querying endpoint. |
+| GET | `/v2/devices/{deviceId}/smart-home-categories` | `getV2DevicesDeviceIdSmartHomeCategories` | Gets the availability of smart home categories in a device. |
+| GET | `/v2/devices/{deviceId}/smart-home-zones` | `getV2DevicesDeviceIdSmartHomeZones` | Gets the available smart home zones for a device. |
+
+### Data points and settings
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/devices/{deviceId}/points` | `getV2DevicesDeviceIdPoints` | Get data points for device. |
+| PATCH | `/v2/devices/{deviceId}/points` | `patchV2DevicesDeviceIdPoints` | Change settings on device. |
+| PATCH | `/v2/devices/{deviceId}/zones/{zoneId}` | `patchV2DevicesDeviceIdZonesZoneId` | Updates zone settings. |
+| GET | `/v3/devices/{deviceId}/points` | `getV3DevicesDeviceIdPoints` | Get scaled data point for device. |
+
+### Notifications
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/systems/{systemId}/notifications/active` | `getV2SystemsSystemIdNotificationsActive` | Retrieve active alarms for specified system. |
+| GET | `/v2/systems/{systemId}/notifications` | `getV2SystemsSystemIdNotifications` | Retrieve all (active, inactive and archived) alarms for specified system. |
+
+### Firmware
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/devices/{deviceId}/firmware-info` | `getV2DevicesDeviceIdFirmwareInfo` | Gets brief information about the specified device's firmware. |
+| GET | `/v2/firmware/{firmwareTypeId}/version/{version}/download` | `getV2FirmwareFirmwareTypeIdVersionVersionDownload` | Download specified firmware file. |
+| GET | `/v2/brands/{brandId}/firmware/{firmwareTypeId}/version/{version}/download` | `getV2BrandsBrandIdFirmwareFirmwareTypeIdVersionVersionDownload` | Download specified firmware file and update firmware metrics (i.e. download count). |
+
+### Premium subscriptions
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/systems/{systemId}/subscriptions` | `getV2SystemsSystemIdSubscriptions` | Finds out whether the specified system has any active premium subscriptions. |
+
+### Aid mode
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/devices/{deviceId}/aidMode` | `getV2DevicesDeviceIdAidMode` | Get aid mode state. |
+
+### Availability
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| GET | `/v2/protected-ping` | `getV2ProtectedPing` | Tests the API availability with authorization header. |
+| GET | `/v2/ping` | `getV2Ping` | Tests the API availability. |
+
+### Identity (OAuth)
+
+These serve the OAuth server itself. `OAuthClient` already covers `POST /oauth/token`;
+the rest are browser pages for the authorization code flow, which an app on the client
+credentials flow doesn't call.
+
+| Method | Path | Swift method | Description |
+| --- | --- | --- | --- |
+| POST | `/oauth/token` | `postOauthToken` | Token endpoint that can be used to programmatically request tokens. |
+| POST | `/user/validate` | `postUserValidate` | Validate endpoint |
+| GET | `/oauth/authorize` | `getOauthAuthorize` | Authorize endpoint that can be used to request tokens or authorization codes via the browser. |
+| POST | `/oauth/authorize` | `postOauthAuthorize` | Authorize endpoint that can be used to request tokens or authorization codes via the browser. |
+| GET | `/connect/authorize/callback` | `getConnectAuthorizeCallback` | Callback endpoint for authorization code flow (OAuth). |
+| GET | `/oauth/login` | `getOauthLogin` | Login endpoints for IdentityServer Authorization code flow (OAuth). |
+| POST | `/oauth/login` | `postOauthLogin` | Login endpoints for IdentityServer Authorization code flow (OAuth). |
+| GET | `/oauth/consent` | `getOauthConsent` | Consent endpoints where users confirms permissions to 3rd party app (OAuth). |
+| POST | `/oauth/consent` | `postOauthConsent` | Consent endpoints where users confirms permissions to 3rd party app (OAuth). |
+| GET | `/oauth/error` | `getOauthError` | Error endpoint for html page with user-friendly error details (OAuth). |
+| GET | `/assets/identity-server/{any}` | `getAssetsIdentityServerAny` | Serving assets (css, js etc.) for identity server pages. |
+| GET | `/.well-known/openid-configuration` | `getWellKnownOpenidConfiguration` | The discovery endpoint that is used to retrieve metadata about the IdentityServer. |
+| GET | `/.well-known/openid-configuration/jwks` | `getWellKnownOpenidConfigurationJwks` | The JSON Web Key Set (JWKS) is a set of keys which contains the public keys used to verify any JSON Web Token (JWT) issued by the authorization server and signed using the RS256 signing algorithm. See https://auth0.com/docs/tokens/concepts/jwks. |
+
 ## Repository layout
 
 | Path | What it is |
