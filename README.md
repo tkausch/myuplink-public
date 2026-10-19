@@ -13,7 +13,8 @@ Swift client for the [myUplink Public API](https://api.myuplink.com) (v2), gener
 ```swift
 import MyUplink
 
-let client = Client.myUplink(token: { try await tokenStore.accessToken() })
+let oauth = OAuthClient(clientID: "…", clientSecret: "…")
+let client = Client.myUplink(token: { try await oauth.accessToken() })
 
 let response = try await client.getV2DevicesDeviceIdAidMode(path: .init(deviceId: "…"))
 switch response {
@@ -25,12 +26,12 @@ case .undocumented(let status, _): print("HTTP \(status)")
 
 Operation names are derived from method + path (the spec has no `operationId`s),
 e.g. `GET /v2/devices/{deviceId}/aidMode` → `getV2DevicesDeviceIdAidMode`.
-Obtaining the OAuth token is left to the caller.
+See [Connecting to myUplink](#connecting-to-myuplink) for how to get the token.
 
 ## Connecting to myUplink
 
-The API uses OAuth 2.0 with the client credentials flow. The library only sends
-the token; you get it yourself.
+The API uses OAuth 2.0 with the client credentials flow. `OAuthClient` fetches
+the token and `Client.myUplink(token:)` sends it.
 
 ### 1. Register an application
 
@@ -38,38 +39,45 @@ Sign in to the [myUplink developer portal](https://dev.myuplink.com) with the
 account that owns your heat pump, and create an application. The portal gives you
 a **client ID** and a **client secret**. Keep the secret out of source control.
 
-### 2. Request an access token
+### 2. Authenticate with `OAuthClient`
 
-POST to the token endpoint with the scopes you need:
-
-```sh
-curl -X POST https://api.myuplink.com/oauth/token \
-  -d grant_type=client_credentials \
-  -d client_id=<client id> \
-  -d client_secret=<client secret> \
-  -d "scope=READSYSTEM WRITESYSTEM"
-```
+`OAuthClient` requests an access token with the client credentials grant and
+caches it until a minute before it expires. Pass `WRITESYSTEM` as well only if you
+change settings:
 
 | Scope | Allows |
 | --- | --- |
-| `READSYSTEM` | GET methods |
+| `READSYSTEM` | GET methods (the default) |
 | `WRITESYSTEM` | PUT, POST, PATCH and DELETE methods |
 
-Ask for `READSYSTEM` alone if you only read data. The response contains an
-`access_token` and `expires_in` (seconds). There is no refresh token. When the
-token expires, request a new one the same way.
+```swift
+let oauth = OAuthClient(
+    clientID: "<client id>",
+    clientSecret: "<client secret>",
+    scopes: ["READSYSTEM", "WRITESYSTEM"]
+)
+```
+
+Read the credentials from the environment or the Keychain, not from source code.
 
 ### 3. Pass the token to the client
 
-The closure runs on every request, so it can return a cached token and fetch a
-new one when it has expired:
+The closure runs on every request. `accessToken()` returns the cached token and
+fetches a new one when it is about to expire:
 
 ```swift
-let client = Client.myUplink(token: { try await tokenStore.accessToken() })
+let client = Client.myUplink(token: { try await oauth.accessToken() })
 ```
 
-`tokenStore` is your own type. It posts to `/oauth/token` as above and caches the
-result until shortly before `expires_in` runs out.
+If a call returns `.unauthorized` anyway, call `await oauth.invalidate()` so the
+next request fetches a fresh token. A failed token request throws
+`OAuthError.tokenRequestFailed(status:body:)`; a malformed answer throws
+`OAuthError.invalidResponse`.
+
+To do it by hand instead, POST `grant_type=client_credentials`, `client_id`,
+`client_secret` and `scope` (space-separated) as a form to
+`https://api.myuplink.com/oauth/token`. The response has `access_token` and
+`expires_in` (seconds).
 
 ### 4. Check the connection
 
@@ -89,6 +97,7 @@ or expired. `.forbidden` means the token lacks the scope for that call.
 | `OpenAPI/openapi-generator-config.yaml` | Generator settings (public access, idiomatic names). |
 | `Sources/MyUplink/Generated/` | Generated code, committed. Never edit it by hand. |
 | `Sources/MyUplink/MyUplinkClient.swift` | Hand-written helpers: server URL, bearer-token middleware. |
+| `Sources/MyUplink/OAuthClient.swift` | Fetches and caches access tokens (client credentials grant). |
 | `scripts/sanitize-spec.py` | Fixes defects in the published spec. |
 | `scripts/generate.sh` | Sanitizes the spec and regenerates the code and test archives. |
 | `scripts/generate-replays.py` | Writes one HAR test archive per operation from the spec. |
