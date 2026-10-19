@@ -88,6 +88,87 @@ let response = try await client.getV2SystemsMe()
 `.ok` means you are connected. `.unauthorized` means the token is missing, wrong
 or expired. `.forbidden` means the token lacks the scope for that call.
 
+## Querying the API
+
+Every operation is a method on `client`. Path and query parameters go in `path:`
+and `query:`, a request body in `body:`. The result is an enum with one case per
+documented status code, so you can either switch over it or use the shortcuts
+`.ok` and `.ok.body.json`, which throw if the status is something else.
+
+The examples below follow the calls in `Tests/MyUplinkTests/ReplayTests.swift`.
+
+### List your systems and devices
+
+```swift
+let systems = try await client.getV2SystemsMe(query: .init(page: 1, itemsPerPage: 10))
+    .ok.body.json
+
+for system in systems.systems ?? [] {
+    for device in system.devices ?? [] {
+        print(system.name as Any, device.id as Any, device.connectionState as Any)
+    }
+}
+```
+
+The device `id` is what the other device endpoints take as `deviceId`.
+
+### Read data points
+
+`parameters` is a comma-separated list of parameter IDs. Leave `query` out to get
+all points:
+
+```swift
+let points = try await client.getV2DevicesDeviceIdPoints(
+    path: .init(deviceId: deviceId),
+    query: .init(parameters: "40004,47011")
+).ok.body.json
+
+for point in points {
+    print(point.parameterId as Any, point.value as Any, point.timestamp as Any)
+}
+```
+
+### Change a setting
+
+This needs the `WRITESYSTEM` scope. The body maps parameter IDs to new values and
+the response echoes what the device accepted:
+
+```swift
+let response = try await client.patchV2DevicesDeviceIdPoints(
+    path: .init(deviceId: deviceId),
+    body: .json(.init(additionalProperties: ["47011": "-1"]))
+)
+print(try response.ok.body.json.additionalProperties)
+```
+
+This changes a real device, so check the parameter ID and value first.
+
+### Handle errors
+
+Switch over the result when you want to treat each status differently:
+
+```swift
+switch try await client.getV2SystemsMe() {
+case .ok(let ok):
+    print(try ok.body.json.systems?.count ?? 0)
+case .unauthorized:
+    await oauth.invalidate()   // token missing, wrong or expired
+case .forbidden:
+    break                      // the token lacks the scope for this call
+case .undocumented(let status, _):
+    print("HTTP \(status)")
+}
+```
+
+Network failures and undecodable responses are thrown as errors, so wrap calls in
+`do`/`catch` or mark the caller `throws`.
+
+### Find the right method
+
+Method names come from the HTTP method and path. Look them up in
+`Sources/MyUplink/Generated/Client.swift`, or search for the path, for example
+`/v2/devices/{deviceId}/firmware-info` → `getV2DevicesDeviceIdFirmwareInfo`.
+
 ## Repository layout
 
 | Path | What it is |
