@@ -27,6 +27,59 @@ Operation names are derived from method + path (the spec has no `operationId`s),
 e.g. `GET /v2/devices/{deviceId}/aidMode` → `getV2DevicesDeviceIdAidMode`.
 Obtaining the OAuth token is left to the caller.
 
+## Connecting to myUplink
+
+The API uses OAuth 2.0 with the client credentials flow. The library only sends
+the token; you get it yourself.
+
+### 1. Register an application
+
+Sign in to the [myUplink developer portal](https://dev.myuplink.com) with the
+account that owns your heat pump, and create an application. The portal gives you
+a **client ID** and a **client secret**. Keep the secret out of source control.
+
+### 2. Request an access token
+
+POST to the token endpoint with the scopes you need:
+
+```sh
+curl -X POST https://api.myuplink.com/oauth/token \
+  -d grant_type=client_credentials \
+  -d client_id=<client id> \
+  -d client_secret=<client secret> \
+  -d "scope=READSYSTEM WRITESYSTEM"
+```
+
+| Scope | Allows |
+| --- | --- |
+| `READSYSTEM` | GET methods |
+| `WRITESYSTEM` | PUT, POST, PATCH and DELETE methods |
+
+Ask for `READSYSTEM` alone if you only read data. The response contains an
+`access_token` and `expires_in` (seconds). There is no refresh token. When the
+token expires, request a new one the same way.
+
+### 3. Pass the token to the client
+
+The closure runs on every request, so it can return a cached token and fetch a
+new one when it has expired:
+
+```swift
+let client = Client.myUplink(token: { try await tokenStore.accessToken() })
+```
+
+`tokenStore` is your own type. It posts to `/oauth/token` as above and caches the
+result until shortly before `expires_in` runs out.
+
+### 4. Check the connection
+
+```swift
+let response = try await client.getV2SystemsMe()
+```
+
+`.ok` means you are connected. `.unauthorized` means the token is missing, wrong
+or expired. `.forbidden` means the token lacks the scope for that call.
+
 ## Repository layout
 
 | Path | What it is |
